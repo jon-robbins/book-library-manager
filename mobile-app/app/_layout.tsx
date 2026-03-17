@@ -1,0 +1,17 @@
+import { Stack } from "expo-router";
+import { AuthProvider } from "@/components/AuthProvider";
+import "../global.css";
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="scan" options={{ headerShown: true, title: "Scan Barcode" }} />
+        <Stack.Screen name="book/[id]" options={{ headerShown: true, title: "Book" }} />
+      </Stack>
+    </AuthProvider>
+  );
+}

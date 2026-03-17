@@ -1,0 +1,18 @@
+type Book @table {
+  id: UUID! @default(expr: "uuidV4()")
+  userId: String!
+  title: String!
+  author: String!
+  isbn: String!
+  haveRead: Boolean!
+  own: Boolean!
+  coverImgUrl: String
+  description: String
+  publishDate: String
+  categories: [String!]
+  averageRating: Float
+  ratingsCount: Int
+  language: String
+  tags: [String!]
+  commentary: String
+}

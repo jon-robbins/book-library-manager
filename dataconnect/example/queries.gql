@@ -1,0 +1,124 @@
+query ListMyBooks @auth(level: USER) {
+  books(where: { userId: { eq_expr: "auth.uid" } }) {
+    id
+    userId
+    title
+    author
+    isbn
+    haveRead
+    own
+    coverImgUrl
+    description
+    publishDate
+    categories
+    averageRating
+    ratingsCount
+    language
+    tags
+    commentary
+  }
+}
+
+query GetBooksByUserIdAndIsbn($isbn: String!) @auth(level: USER) {
+  books(where: { userId: { eq_expr: "auth.uid" }, isbn: { eq: $isbn } }) {
+    id
+    title
+    author
+    isbn
+  }
+}
+
+query GetBookById($id: UUID!) @auth(level: USER) {
+  books(where: { id: { eq: $id }, userId: { eq_expr: "auth.uid" } }) {
+    id
+    userId
+    title
+    author
+    isbn
+    haveRead
+    own
+    coverImgUrl
+    description
+    publishDate
+    categories
+    averageRating
+    ratingsCount
+    language
+    tags
+    commentary
+  }
+}
+
+mutation CreateBook(
+  $title: String!
+  $author: String!
+  $isbn: String!
+  $haveRead: Boolean!
+  $own: Boolean!
+  $coverImgUrl: String
+  $description: String
+  $publishDate: String
+  $categories: [String!]
+  $averageRating: Float
+  $ratingsCount: Int
+  $language: String
+  $tags: [String!]
+  $commentary: String
+) @auth(level: USER) {
+  book_insert(data: {
+    userId_expr: "auth.uid"
+    title: $title
+    author: $author
+    isbn: $isbn
+    haveRead: $haveRead
+    own: $own
+    coverImgUrl: $coverImgUrl
+    description: $description
+    publishDate: $publishDate
+    categories: $categories
+    averageRating: $averageRating
+    ratingsCount: $ratingsCount
+    language: $language
+    tags: $tags
+    commentary: $commentary
+  })
+}
+
+mutation UpdateBook(
+  $id: UUID!
+  $title: String
+  $author: String
+  $isbn: String
+  $haveRead: Boolean
+  $own: Boolean
+  $coverImgUrl: String
+  $description: String
+  $publishDate: String
+  $categories: [String!]
+  $averageRating: Float
+  $ratingsCount: Int
+  $language: String
+  $tags: [String!]
+  $commentary: String
+) @auth(level: USER) {
+  book_update(key: { id: $id }, data: {
+    title: $title
+    author: $author
+    isbn: $isbn
+    haveRead: $haveRead
+    own: $own
+    coverImgUrl: $coverImgUrl
+    description: $description
+    publishDate: $publishDate
+    categories: $categories
+    averageRating: $averageRating
+    ratingsCount: $ratingsCount
+    language: $language
+    tags: $tags
+    commentary: $commentary
+  })
+}
+
+mutation DeleteBook($id: UUID!) @auth(level: USER) {
+  book_delete(key: { id: $id })
+}

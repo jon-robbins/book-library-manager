@@ -1,0 +1,12 @@
+specVersion: "v1"
+serviceId: "library"
+location: "us-east4"
+schemas:
+  - source: "./schema"
+    datasource:
+      postgresql:
+        database: "fdcdb"
+        cloudSql:
+          instanceId: "library-fdc"
+          schemaValidation: "COMPATIBLE"
+connectorDirs: ["./example"]

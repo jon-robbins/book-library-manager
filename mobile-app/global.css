@@ -1,0 +1,6 @@
+/* Global styles - minimal for native */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
+}

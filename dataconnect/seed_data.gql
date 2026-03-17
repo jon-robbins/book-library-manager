@@ -1,0 +1,15 @@
+# Seed data for development. Run from Firebase Console or VS Code extension.
+# Replace USER_UID with a real Firebase Auth UID after signing in.
+# mutation SeedBooks @auth(level: USER) {
+#   book_insert(data: {
+#     userId_expr: "auth.uid"
+#     title: "The Hitchhiker's Guide to the Galaxy"
+#     author: "Douglas Adams"
+#     isbn: "978-0345391803"
+#     haveRead: true
+#     own: true
+#     description: "A comedic science fiction series."
+#     tags: ["Science Fiction", "Comedy"]
+#     commentary: "A truly brilliant and funny book!"
+#   }) { id }
+# }
