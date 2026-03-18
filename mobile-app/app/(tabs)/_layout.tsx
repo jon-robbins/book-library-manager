@@ -1,4 +1,5 @@
 import { Tabs } from "expo-router";
+import AddMenuButton from "@/components/AddMenuButton";
 
 export default function TabLayout() {
   return (
@@ -6,13 +7,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "My Books",
-        }}
-      />
-      <Tabs.Screen
-        name="scan"
-        options={{
-          title: "Scan",
+          title: "Home",
+          headerRight: () => <AddMenuButton />,
         }}
       />
       <Tabs.Screen

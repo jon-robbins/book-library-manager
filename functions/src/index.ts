@@ -1,6 +1,15 @@
+import * as admin from "firebase-admin";
 import { defineSecret } from "firebase-functions/params";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { GoogleAuth } from "google-auth-library";
+
+if (!admin.apps.length) {
+  const projectId = process.env.GCLOUD_PROJECT ?? process.env.GCP_PROJECT;
+  const storageBucket =
+    process.env.FIREBASE_STORAGE_BUCKET ??
+    (projectId ? `${projectId}.firebasestorage.app` : undefined);
+  admin.initializeApp(storageBucket ? { storageBucket } : undefined);
+}
 
 const googleBooksServiceAccountKey = defineSecret("GOOGLE_BOOKS_SERVICE_ACCOUNT_KEY");
 
@@ -133,3 +142,50 @@ export const getBookByIsbn = onCall(
     return meta;
   }
 );
+
+/**
+ * Callable: uploadCoverPhoto
+ * Accepts base64 image data and uploads to Storage. Returns a short-lived signed URL.
+ * Avoids Blob/ArrayBuffer issues in React Native. Caller must be authenticated.
+ */
+export const uploadCoverPhoto = onCall(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Must be signed in to upload a cover.");
+  }
+  const base64 = request.data?.base64;
+  if (typeof base64 !== "string" || !base64) {
+    throw new HttpsError("invalid-argument", "Missing or invalid base64 image data.");
+  }
+  try {
+    const buffer = Buffer.from(base64, "base64");
+    const filename = `covers/${uid}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}.jpg`;
+    const bucketName = admin.app().options.storageBucket;
+    if (!bucketName) {
+      throw new HttpsError("failed-precondition", "Storage bucket is not configured. Set storageBucket in Firebase Admin init or FIREBASE_STORAGE_BUCKET.");
+    }
+    const bucket = admin.storage().bucket(bucketName);
+    const file = bucket.file(filename);
+    await file.save(buffer, {
+      metadata: { contentType: "image/jpeg" },
+    });
+
+    // Signed URL keeps the object private while allowing temporary client access.
+    const expires = Date.now() + 60 * 60 * 1000; // 1 hour
+    const [url] = await file.getSignedUrl({
+      version: "v4",
+      action: "read",
+      expires,
+    });
+    return { url };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Upload failed.";
+    if (typeof message === "string" && /signBlob|Cannot sign data|client_email|iam\.serviceAccounts\.signBlob/i.test(message)) {
+      throw new HttpsError(
+        "internal",
+        "Storage signing is not configured for this function identity. Grant Service Account Token Creator on the runtime service account and enable IAM Service Account Credentials API."
+      );
+    }
+    throw new HttpsError("internal", message);
+  }
+});

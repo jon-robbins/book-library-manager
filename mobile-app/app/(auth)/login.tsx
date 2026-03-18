@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
   form: { gap: 12 },
   title: { fontSize: 24, fontWeight: "bold", marginBottom: 8 },
   error: { color: "red", marginBottom: 4 },
-  input: { borderWidth: 1, borderColor: "#ccc", padding: 12, borderRadius: 8, fontSize: 16 },
+  input: { borderWidth: 1, borderColor: "#ccc", padding: 12, borderRadius: 8, fontSize: 16, color: "#111" },
   button: { backgroundColor: "#007AFF", padding: 14, borderRadius: 8, alignItems: "center" },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
   link: { alignItems: "center", marginTop: 16 },

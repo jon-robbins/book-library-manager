@@ -9,8 +9,16 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="scan" options={{ headerShown: true, title: "Scan Barcode" }} />
+        <Stack.Screen
+          name="scan"
+          options={{
+            headerShown: true,
+            title: "Scan Barcode",
+            presentation: "modal",
+          }}
+        />
         <Stack.Screen name="book/[id]" options={{ headerShown: true, title: "Book" }} />
+        <Stack.Screen name="add" />
       </Stack>
     </AuthProvider>
   );

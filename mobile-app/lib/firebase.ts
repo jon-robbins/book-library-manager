@@ -1,5 +1,6 @@
 import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
+import { getStorage } from "firebase/storage";
 import { getDataConnect } from "firebase/data-connect";
 import { connectorConfig } from "@/lib/dataconnect-generated";
 
@@ -24,6 +25,7 @@ if (getApps().length === 0) {
 }
 
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 export const dataConnect = getDataConnect(app, connectorConfig);
 export { connectorConfig };
 export default app;
