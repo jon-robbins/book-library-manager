@@ -10,9 +10,12 @@ import {
   TextInput,
   KeyboardAvoidingView,
   ScrollView,
+  Switch,
+  Image,
 } from "react-native";
 import { useAuth } from "@/components/AuthProvider";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import type { BookMetadata } from "@/lib/booksApi";
 import { getBookMetadataByIsbn } from "@/lib/booksApi";
 import { fetchBooksByIsbn, addBook } from "@/lib/books";
 
@@ -21,84 +24,37 @@ type Props = {
   onAdded?: () => void;
 };
 
-async function processIsbn(
-  digits: string,
-  onDone: () => void,
-  onAdded?: () => void
+/** Review step: show metadata and let user set own/haveRead and commentary before adding. */
+type ReviewState = {
+  meta: BookMetadata;
+  existingCount: number;
+  own: boolean;
+  haveRead: boolean;
+  commentary: string;
+};
+
+function buildAddBookPayload(
+  meta: BookMetadata,
+  own: boolean,
+  haveRead: boolean,
+  commentary: string
 ) {
-  const meta = await getBookMetadataByIsbn(digits);
-  if (!meta) {
-    Alert.alert("Not found", "No book metadata found for this ISBN.");
-    onDone();
-    return;
-  }
-  const existing = await fetchBooksByIsbn(meta.isbn);
-  if (existing.length > 0) {
-    Alert.alert(
-      "You already have this book in your library. Create a new copy?",
-      undefined,
-      [
-        { text: "Cancel", style: "cancel", onPress: onDone },
-        {
-          text: "Create new copy",
-          onPress: async () => {
-            try {
-              await addBook({
-                title: meta.title,
-                author: meta.author,
-                isbn: meta.isbn,
-                haveRead: false,
-                own: true,
-                coverImgUrl: meta.coverImgUrl || undefined,
-                description: meta.description || undefined,
-                publishDate: meta.publishDate || undefined,
-                categories: meta.categories?.length ? meta.categories : null,
-                averageRating: meta.averageRating ?? undefined,
-                ratingsCount: meta.ratingsCount ?? undefined,
-                language: meta.language || undefined,
-                tags: null,
-                commentary: undefined,
-              });
-              Alert.alert("Added", `"${meta.title}" added as a new copy.`, [
-                { text: "OK", onPress: onAdded ?? onDone },
-              ]);
-            } catch (e) {
-              const msg = e instanceof Error ? e.message : "Could not add book.";
-              Alert.alert("Error", msg);
-            } finally {
-              onDone();
-            }
-          },
-        },
-      ]
-    );
-    return;
-  }
-  try {
-    await addBook({
-      title: meta.title,
-      author: meta.author,
-      isbn: meta.isbn,
-      haveRead: false,
-      own: true,
-      coverImgUrl: meta.coverImgUrl || undefined,
-      description: meta.description || undefined,
-      publishDate: meta.publishDate || undefined,
-      categories: meta.categories?.length ? meta.categories : null,
-      averageRating: meta.averageRating ?? undefined,
-      ratingsCount: meta.ratingsCount ?? undefined,
-      language: meta.language || undefined,
-      tags: null,
-      commentary: undefined,
-    });
-    Alert.alert("Added", `"${meta.title}" added to your library.`, [
-      { text: "OK", onPress: onAdded ?? onDone },
-    ]);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Could not add book.";
-    Alert.alert("Error", msg);
-  }
-  onDone();
+  return {
+    title: meta.title,
+    author: meta.author,
+    isbn: meta.isbn,
+    haveRead,
+    own,
+    coverImgUrl: meta.coverImgUrl || undefined,
+    description: meta.description || undefined,
+    publishDate: meta.publishDate || undefined,
+    categories: meta.categories?.length ? meta.categories : null,
+    averageRating: meta.averageRating ?? undefined,
+    ratingsCount: meta.ratingsCount ?? undefined,
+    // Omit language: deployed DataConnect connector may not accept $language
+    tags: null,
+    commentary: (commentary ?? "").trim() || undefined,
+  };
 }
 
 export default function ScanScreenContent({ onAdded }: Props) {
@@ -106,6 +62,7 @@ export default function ScanScreenContent({ onAdded }: Props) {
   const [scanned, setScanned] = useState(false);
   const [loading, setLoading] = useState(false);
   const [manualIsbn, setManualIsbn] = useState("");
+  const [review, setReview] = useState<ReviewState | null>(null);
   const { user } = useAuth();
   const processingRef = useRef(false);
 
@@ -114,6 +71,40 @@ export default function ScanScreenContent({ onAdded }: Props) {
     setLoading(false);
     processingRef.current = false;
   }, []);
+
+  const showReview = useCallback((meta: BookMetadata, existingCount: number) => {
+    setReview({
+      meta,
+      existingCount,
+      own: true,
+      haveRead: false,
+      commentary: "",
+    });
+    onLookupDone();
+  }, [onLookupDone]);
+
+  const dismissReview = useCallback(() => {
+    setReview(null);
+  }, []);
+
+  const submitFromReview = useCallback(
+    async (r: ReviewState) => {
+      try {
+        await addBook(buildAddBookPayload(r.meta, r.own, r.haveRead, r.commentary));
+        Alert.alert(
+          "Added",
+          r.existingCount > 0
+            ? `"${r.meta.title}" added as a new copy.`
+            : `"${r.meta.title}" added to your library.`,
+          [{ text: "OK", onPress: () => { setReview(null); onAdded?.(); } }]
+        );
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Could not add book.";
+        Alert.alert("Error", msg);
+      }
+    },
+    [onAdded]
+  );
 
   const handleBarCodeScanned = useCallback(
     (result: { data: string }) => {
@@ -134,79 +125,18 @@ export default function ScanScreenContent({ onAdded }: Props) {
         })
         .then((payload) => {
           if (!payload) return;
-          const { meta, existing } = payload;
-          if (existing.length > 0) {
-            Alert.alert(
-              "You already have this book in your library. Create a new copy?",
-              undefined,
-              [
-                { text: "Cancel", style: "cancel", onPress: onLookupDone },
-                {
-                  text: "Create new copy",
-                  onPress: async () => {
-                    try {
-                      await addBook({
-                        title: meta.title,
-                        author: meta.author,
-                        isbn: meta.isbn,
-                        haveRead: false,
-                        own: true,
-                        coverImgUrl: meta.coverImgUrl || undefined,
-                        description: meta.description || undefined,
-                        publishDate: meta.publishDate || undefined,
-                        categories: meta.categories?.length ? meta.categories : null,
-                        averageRating: meta.averageRating ?? undefined,
-                        ratingsCount: meta.ratingsCount ?? undefined,
-                        language: meta.language || undefined,
-                        tags: null,
-                        commentary: undefined,
-                      });
-                      Alert.alert("Added", `"${meta.title}" added as a new copy.`, [
-                        { text: "OK", onPress: onAdded ?? onLookupDone },
-                      ]);
-                    } catch (e) {
-                      const msg = e instanceof Error ? e.message : "Could not add book.";
-                      Alert.alert("Error", msg);
-                    } finally {
-                      onLookupDone();
-                    }
-                  },
-                },
-              ]
-            );
-            return;
-          }
-          return addBook({
-            title: meta.title,
-            author: meta.author,
-            isbn: meta.isbn,
-            haveRead: false,
-            own: true,
-            coverImgUrl: meta.coverImgUrl || undefined,
-            description: meta.description || undefined,
-            publishDate: meta.publishDate || undefined,
-            categories: meta.categories?.length ? meta.categories : null,
-            averageRating: meta.averageRating ?? undefined,
-            ratingsCount: meta.ratingsCount ?? undefined,
-            language: meta.language || undefined,
-            tags: null,
-            commentary: undefined,
-          }).then(() => {
-            Alert.alert("Added", `"${meta.title}" added to your library.`, [
-              { text: "OK", onPress: onAdded ?? onLookupDone },
-            ]);
-          });
+          showReview(payload.meta, payload.existing.length);
         })
         .catch((e) => {
-          const msg = e instanceof Error ? e.message : "Could not add book.";
+          const msg = e instanceof Error ? e.message : "Could not look up book.";
           Alert.alert("Error", msg);
         })
         .finally(onLookupDone);
     },
-    [user, onLookupDone, onAdded]
+    [user, onLookupDone, showReview]
   );
 
-  const handleManualSubmit = useCallback(() => {
+  const handleManualSubmit = useCallback(async () => {
     const digits = manualIsbn.replace(/\D/g, "");
     if (digits.length < 10) {
       Alert.alert("Invalid ISBN", "Enter at least 10 digits.");
@@ -215,15 +145,87 @@ export default function ScanScreenContent({ onAdded }: Props) {
     if (processingRef.current) return;
     processingRef.current = true;
     setLoading(true);
-    processIsbn(digits, onLookupDone, onAdded)
-      .catch((e) => {
-        const msg = e instanceof Error ? e.message : "Could not add book.";
-        Alert.alert("Error", msg);
-      })
-      .finally(onLookupDone);
-  }, [manualIsbn, onLookupDone, onAdded]);
+    try {
+      const meta = await getBookMetadataByIsbn(digits);
+      if (!meta) {
+        Alert.alert("Not found", "No book metadata found for this ISBN.");
+        return;
+      }
+      const existing = await fetchBooksByIsbn(meta.isbn);
+      showReview(meta, existing.length);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not look up book.";
+      Alert.alert("Error", msg);
+    } finally {
+      onLookupDone();
+    }
+  }, [manualIsbn, onLookupDone, showReview]);
 
   const isWeb = Platform.OS === "web";
+
+  if (review) {
+    const r = review;
+    const year = r.meta.publishDate
+      ? (r.meta.publishDate.match(/\d{4}/) ?? [])[0] ?? r.meta.publishDate
+      : "";
+    const genre = (r.meta.categories?.length ? r.meta.categories : []).slice(0, 5).join(", ") || "—";
+    return (
+      <ScrollView style={styles.container} contentContainerStyle={styles.reviewContent}>
+        <Text style={styles.reviewTitle}>Review book</Text>
+        <View style={styles.reviewCard}>
+          {r.meta.coverImgUrl ? (
+            <Image source={{ uri: r.meta.coverImgUrl }} style={styles.reviewCover} />
+          ) : (
+            <View style={[styles.reviewCover, styles.reviewCoverPlaceholder]}>
+              <Text style={styles.reviewCoverPlaceholderText}>No cover</Text>
+            </View>
+          )}
+          <View style={styles.reviewMeta}>
+            <Text style={styles.reviewBookTitle}>{r.meta.title}</Text>
+            <Text style={styles.reviewAuthor}>{r.meta.author}</Text>
+            {year ? <Text style={styles.reviewDetail}>Year: {year}</Text> : null}
+            <Text style={styles.reviewDetail}>Genre: {genre}</Text>
+          </View>
+        </View>
+        <View style={styles.toggleRow}>
+          <Text style={styles.toggleLabel}>I own this book</Text>
+          <Switch
+            value={r.own}
+            onValueChange={(own) => setReview((prev) => prev ? { ...prev, own } : null)}
+          />
+        </View>
+        <View style={styles.toggleRow}>
+          <Text style={styles.toggleLabel}>I have read this</Text>
+          <Switch
+            value={r.haveRead}
+            onValueChange={(haveRead) => setReview((prev) => prev ? { ...prev, haveRead } : null)}
+          />
+        </View>
+        <Text style={styles.commentaryLabel}>Comments (optional)</Text>
+        <TextInput
+          style={styles.commentaryInput}
+          placeholder="Add your notes about this book..."
+          placeholderTextColor="#999"
+          value={r.commentary}
+          onChangeText={(commentary) => setReview((prev) => prev ? { ...prev, commentary } : null)}
+          multiline
+          numberOfLines={3}
+          editable
+        />
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => submitFromReview(r)}
+        >
+          <Text style={styles.buttonText}>
+            {r.existingCount > 0 ? "Create new copy" : "Add to library"}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.secondaryButton} onPress={dismissReview}>
+          <Text style={styles.secondaryButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    );
+  }
 
   const manualEntrySection = (
     <View style={styles.manualSection}>
@@ -324,6 +326,38 @@ export default function ScanScreenContent({ onAdded }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { flexGrow: 1 },
+  reviewContent: { padding: 20, paddingTop: 24 },
+  reviewTitle: { fontSize: 22, fontWeight: "700", marginBottom: 16 },
+  reviewCard: { flexDirection: "row", marginBottom: 20, gap: 16 },
+  reviewCover: { width: 100, height: 150, borderRadius: 8, backgroundColor: "#eee" },
+  reviewCoverPlaceholder: { justifyContent: "center", alignItems: "center" },
+  reviewCoverPlaceholderText: { color: "#888", fontSize: 12 },
+  reviewMeta: { flex: 1, justifyContent: "center" },
+  reviewBookTitle: { fontSize: 18, fontWeight: "600", marginBottom: 4 },
+  reviewAuthor: { fontSize: 16, color: "#444", marginBottom: 8 },
+  reviewDetail: { fontSize: 14, color: "#666", marginBottom: 2 },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    marginBottom: 8,
+  },
+  toggleLabel: { fontSize: 16 },
+  commentaryLabel: { fontSize: 16, marginTop: 16, marginBottom: 8 },
+  commentaryInput: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    minHeight: 88,
+    textAlignVertical: "top",
+  },
+  secondaryButton: { marginTop: 12, alignItems: "center", paddingVertical: 14 },
+  secondaryButtonText: { color: "#007AFF", fontSize: 16 },
   cameraWrap: { minHeight: 280 },
   camera: { height: 280 },
   simulatorHint: {
