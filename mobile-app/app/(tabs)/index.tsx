@@ -9,15 +9,18 @@ export default function HomeScreen() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const loadBooks = useCallback(async () => {
     if (!user) return;
+    setError(null);
     try {
       const list = await fetchMyBooks();
       setBooks(list);
-    } catch {
-      // ignore
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Could not load books.";
+      setError(message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -51,10 +54,21 @@ export default function HomeScreen() {
     return <Redirect href="/(auth)/login" />;
   }
 
-  if (loading) {
+  if (loading && books.length === 0) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (error && books.length === 0) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => { setLoading(true); loadBooks(); }}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -68,11 +82,23 @@ export default function HomeScreen() {
         ListEmptyComponent={
           <Text style={styles.empty}>No books yet. Scan a barcode to add one.</Text>
         }
+        ListHeaderComponent={
+          error ? (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorBannerText}>{error}</Text>
+              <TouchableOpacity onPress={() => { setError(null); onRefresh(); }}>
+                <Text style={styles.retryLink}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null
+        }
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.row}
             onPress={() => router.push(`/book/${item.id}`)}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`Book: ${item.title} by ${item.author}`}
           >
             {item.coverImgUrl ? (
               <Image
@@ -86,8 +112,12 @@ export default function HomeScreen() {
               </View>
             )}
             <View style={styles.rowText}>
-              <Text style={styles.bookTitle}>{item.title}</Text>
-              <Text style={styles.bookAuthor}>{item.author}</Text>
+              <Text style={styles.bookTitle} numberOfLines={2} ellipsizeMode="tail">
+                {item.title}
+              </Text>
+              <Text style={styles.bookAuthor} numberOfLines={1} ellipsizeMode="tail">
+                {item.author}
+              </Text>
             </View>
           </TouchableOpacity>
         )}
@@ -100,6 +130,20 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   empty: { padding: 20, textAlign: "center", color: "#666" },
+  errorText: { color: "#666", textAlign: "center", paddingHorizontal: 24, marginBottom: 16 },
+  retryButton: { paddingVertical: 12, paddingHorizontal: 24, backgroundColor: "#007AFF", borderRadius: 8 },
+  retryButtonText: { color: "#fff", fontSize: 17, fontWeight: "600" },
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 12,
+    marginBottom: 8,
+    backgroundColor: "#fff3cd",
+    borderRadius: 8,
+  },
+  errorBannerText: { flex: 1, color: "#856404", fontSize: 14, marginRight: 12 },
+  retryLink: { color: "#007AFF", fontSize: 14, fontWeight: "600" },
   row: {
     flexDirection: "row",
     alignItems: "center",
