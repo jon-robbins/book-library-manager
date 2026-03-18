@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { Redirect, useRouter, useFocusEffect } from "expo-router";
-import { View, Text, StyleSheet, ActivityIndicator, FlatList, TouchableOpacity, RefreshControl, Image } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, FlatList, TouchableOpacity, RefreshControl } from "react-native";
 import { useAuth } from "@/components/AuthProvider";
 import { fetchMyBooks, type Book } from "@/lib/books";
+import BookCoverImage from "@/components/BookCoverImage";
 
 export default function HomeScreen() {
   const { user, loading: authLoading } = useAuth();
@@ -100,17 +101,13 @@ export default function HomeScreen() {
             accessibilityRole="button"
             accessibilityLabel={`Book: ${item.title} by ${item.author}`}
           >
-            {item.coverImgUrl ? (
-              <Image
-                source={{ uri: item.coverImgUrl }}
-                style={styles.cover}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={[styles.cover, styles.coverPlaceholder]}>
-                <Text style={styles.coverPlaceholderText}>📖</Text>
-              </View>
-            )}
+            <BookCoverImage
+              book={item}
+              style={styles.cover}
+              resizeMode="cover"
+              placeholderStyle={styles.coverPlaceholder}
+              placeholderText="📖"
+            />
             <View style={styles.rowText}>
               <Text style={styles.bookTitle} numberOfLines={2} ellipsizeMode="tail">
                 {item.title}

@@ -11,13 +11,13 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Switch,
-  Image,
 } from "react-native";
 import { useAuth } from "@/components/AuthProvider";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import type { BookMetadata } from "@/lib/booksApi";
 import { getBookMetadataByIsbn } from "@/lib/booksApi";
 import { fetchBooksByIsbn, addBook } from "@/lib/books";
+import BookCoverImage from "@/components/BookCoverImage";
 
 type Props = {
   /** Called when a book was added (e.g. router.back when shown as a stack screen). */
@@ -173,13 +173,13 @@ export default function ScanScreenContent({ onAdded }: Props) {
       <ScrollView style={styles.container} contentContainerStyle={styles.reviewContent}>
         <Text style={styles.reviewTitle}>Review book</Text>
         <View style={styles.reviewCard}>
-          {r.meta.coverImgUrl ? (
-            <Image source={{ uri: r.meta.coverImgUrl }} style={styles.reviewCover} />
-          ) : (
-            <View style={[styles.reviewCover, styles.reviewCoverPlaceholder]}>
-              <Text style={styles.reviewCoverPlaceholderText}>No cover</Text>
-            </View>
-          )}
+          <BookCoverImage
+            book={r.meta}
+            style={styles.reviewCover}
+            resizeMode="cover"
+            placeholderStyle={styles.reviewCoverPlaceholder}
+            placeholderText="No cover"
+          />
           <View style={styles.reviewMeta}>
             <Text style={styles.reviewBookTitle}>{r.meta.title}</Text>
             <Text style={styles.reviewAuthor}>{r.meta.author}</Text>

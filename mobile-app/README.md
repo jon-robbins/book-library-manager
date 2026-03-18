@@ -81,3 +81,10 @@ curl -s -X POST "https://us-central1-library-84eeb.cloudfunctions.net/getBookByI
 ```
 
 If the function is configured to allow unauthenticated access for testing, you can omit the `Authorization` header and try the same `-d` body. The response will be in the form `{"result": { ... book metadata ... }}`.
+
+### Cover images and embedding
+
+The Google Books API returns `imageLinks` (thumbnail, medium, etc.) in volume responses, but the [Books API Using guide](https://developers.google.com/books/docs/v1/using) does not document how to safely embed those URLs in `<img>` or React Native `Image`. In practice, requests from another origin often get **403 Forbidden** because Google’s image servers can reject requests that send a `Referer` header.
+
+- **This app (iOS/React Native):** We use **Open Library’s cover API** for display when we have an ISBN (`https://covers.openlibrary.org/b/isbn/{isbn}-L.jpg`), so covers load reliably. Stored non-Google URLs (e.g. from Open Library lookup) are still used as-is. See `lib/coverUrl.ts`.
+- **Web:** If you display Google Books cover URLs in a web app, try **`referrerPolicy="no-referrer"`** on the image so the browser doesn’t send a referrer: `<img referrerPolicy="no-referrer" src={coverImgUrl} alt="" />`. That often allows the image to load; if not, fall back to Open Library by ISBN as above.

@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from "react-native";
 import { useAuth } from "@/components/AuthProvider";
 import { fetchBookById, removeBook, type Book } from "@/lib/books";
+import BookCoverImage from "@/components/BookCoverImage";
 
 export default function BookDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -61,6 +62,13 @@ export default function BookDetailScreen() {
 
   return (
     <View style={styles.container}>
+      <BookCoverImage
+        book={book}
+        style={styles.cover}
+        resizeMode="cover"
+        placeholderStyle={styles.coverPlaceholder}
+        placeholderText="📖"
+      />
       <Text style={styles.title}>{book.title}</Text>
       <Text style={styles.author}>{book.author}</Text>
       <Text style={styles.isbn}>ISBN: {book.isbn}</Text>
@@ -101,6 +109,20 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 20 },
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   error: { color: "#666" },
+  cover: {
+    width: "100%",
+    maxWidth: 200,
+    height: 300,
+    alignSelf: "center",
+    borderRadius: 8,
+    backgroundColor: "#eee",
+    marginBottom: 16,
+  },
+  coverPlaceholder: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  coverPlaceholderText: { fontSize: 48 },
   title: { fontSize: 22, fontWeight: "bold" },
   author: { fontSize: 17, marginTop: 8, color: "#333" },
   isbn: { fontSize: 14, marginTop: 4, color: "#666" },
