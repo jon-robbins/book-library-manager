@@ -235,7 +235,7 @@ export default function ScanScreenContent({ onAdded }: Props) {
         placeholder="e.g. 9780140328721"
         placeholderTextColor="#999"
         value={manualIsbn}
-        onChangeText={setManualIsbn}
+        onChangeText={(text) => setManualIsbn(text.replace(/\D/g, ""))}
         keyboardType="number-pad"
         maxLength={17}
         editable={!loading}
