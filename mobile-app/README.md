@@ -18,6 +18,7 @@ React Native (Expo) app for the library MVP: Firebase Auth, Data Connect (Postgr
 ## Features
 
 - **Auth**: Email/Password with Firebase Auth; session stored in iOS Keychain via `expo-secure-store` (`WHEN_UNLOCKED_THIS_DEVICE_ONLY`).
+- **Settings**: App version from `app.json` (`expo.version`) is shown at the bottom of the Settings screen via `Constants.expoConfig?.version` (TLA-22).
 - **Books**: List, add, view, and delete books via Firebase Data Connect (Postgres). All operations are scoped to the signed-in user (`auth.uid`).
 - **Barcode**: Scan book barcodes (ISBN); metadata is fetched from Open Library or Google Books (Open Library from the client, no key; Google Books via Firebase callable `getBookByIsbn` with the library service account). Duplicate check shows “You already have this book in your library. Create a new copy?”.
 - **Data Connect**: Generated SDK in `lib/dataconnect-generated`. Queries/mutations in `dataconnect/example/queries.gql` (ListMyBooks, GetBooksByUserIdAndIsbn, CreateBook, UpdateBook, DeleteBook).

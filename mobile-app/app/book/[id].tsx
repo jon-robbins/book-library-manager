@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useNavigation } from "@react-navigation/native";
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from "react-native";
 import { useAuth } from "@/components/AuthProvider";
 import { fetchBookById, removeBook, type Book } from "@/lib/books";
@@ -8,20 +9,28 @@ import BookCoverImage from "@/components/BookCoverImage";
 export default function BookDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const navigation = useNavigation();
   const { user } = useAuth();
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
 
+  useLayoutEffect(() => {
+    navigation.setOptions({ title: book?.title ?? "Book" });
+  }, [navigation, book?.title]);
+
   useEffect(() => {
     if (!id || !user) return;
     let cancelled = false;
-    fetchBookById(id).then((b) => {
-      if (!cancelled) {
-        setBook(b);
-      }
-    }).finally(() => {
-      if (!cancelled) setLoading(false);
-    });
+    fetchBookById(id)
+      .then((b) => {
+        if (!cancelled) setBook(b);
+      })
+      .catch(() => {
+        if (!cancelled) setBook(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => { cancelled = true; };
   }, [id, user]);
 

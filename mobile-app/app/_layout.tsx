@@ -15,10 +15,14 @@ export default function RootLayout() {
             headerShown: true,
             title: "Scan Barcode",
             presentation: "modal",
+            headerBackTitle: "Home",
           }}
         />
-        <Stack.Screen name="book/[id]" options={{ headerShown: true, title: "Book" }} />
-        <Stack.Screen name="add" />
+        <Stack.Screen
+          name="book/[id]"
+          options={{ headerShown: true, title: "Book", headerBackTitle: "Home" }}
+        />
+        <Stack.Screen name="add" options={{ headerBackTitle: "Home" }} />
       </Stack>
     </AuthProvider>
   );
