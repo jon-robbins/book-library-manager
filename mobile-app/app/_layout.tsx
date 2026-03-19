@@ -2,6 +2,8 @@ import { Stack } from "expo-router";
 import { AuthProvider } from "@/components/AuthProvider";
 import "../global.css";
 
+const HOME_BACK_TITLE = "Home";
+
 export default function RootLayout() {
   return (
     <AuthProvider>
@@ -15,9 +17,13 @@ export default function RootLayout() {
             headerShown: true,
             title: "Scan Barcode",
             presentation: "modal",
+            headerBackTitle: HOME_BACK_TITLE,
           }}
         />
-        <Stack.Screen name="book/[id]" options={{ headerShown: true, title: "Book" }} />
+        <Stack.Screen
+          name="book/[id]"
+          options={{ headerShown: true, title: "Book", headerBackTitle: HOME_BACK_TITLE }}
+        />
         <Stack.Screen name="add" />
       </Stack>
     </AuthProvider>
