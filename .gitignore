@@ -62,8 +62,11 @@ node_modules/
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variables file
-.env
+# dotenv environment variable files (all env variants)
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
 
 # dataconnect generated files
 .dataconnect
@@ -73,3 +76,5 @@ tree.txt
 
 # Large data files (Open Library dump, etc.)
 data/
+
+.devfleet-worktrees/

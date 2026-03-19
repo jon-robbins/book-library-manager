@@ -8,6 +8,7 @@ import BookReviewForm, {
   buildAddBookPayload,
   type ReviewState,
 } from "@/components/BookReviewForm";
+import ErrorState from "@/components/ErrorState";
 import { LIBRARY_HOME } from "@/lib/routes";
 
 export default function AddReviewScreen() {
@@ -79,8 +80,13 @@ export default function AddReviewScreen() {
 
   if (error || !state) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.message}>{error ?? "Missing ISBN"}</Text>
+      <View style={styles.container}>
+        <ErrorState
+          title="Unable to look up book"
+          message={error ?? "Could not retrieve book information. Please check the ISBN and try again."}
+          onRetry={() => router.back()}
+          testID="error-state"
+        />
       </View>
     );
   }
@@ -96,6 +102,7 @@ export default function AddReviewScreen() {
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1 },
   centered: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },
   message: { textAlign: "center", color: "#666" },
 });

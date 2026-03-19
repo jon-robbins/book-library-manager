@@ -1,0 +1,58 @@
+{
+  "mcpServers": {
+    "atlassian": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.atlassian.com/v1/mcp"],
+      "description": "Jira & Confluence - Essential for ticket orchestration"
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "description": "GitHub operations - Creating branches and PRs for workers"
+    },
+    "firebase": {
+      "command": "npx",
+      "args": ["-y", "firebase-tools@latest", "mcp"],
+      "description": "Crucial: Direct management of Data Connect, Functions, and Auth"
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/jon.robbins/GitHub/library"],
+      "description": "Gives agents access to read/write your project files"
+    },
+    "devfleet": {
+      "type": "http",
+      "url": "http://localhost:18801/mcp",
+      "description": "Multi-agent orchestration - Dispatches parallel worker agents"
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "description": "Persistent project context and 'vibe' storage"
+    },
+    "exa": {
+      "args": [
+        "-y",
+        "exa-mcp-server"
+      ],
+      "command": "npx",
+      "description": "Neural search for agents - handles web research and code documentation without a CX ID.",
+      "env": {
+        "EXA_API_KEY": "${env:EXA_API_KEY}"
+      }
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "description": "Ensures agents think through schema changes before coding"
+    },
+    "token-optimizer": {
+      "command": "npx",
+      "args": ["-y", "token-optimizer-mcp"],
+      "description": "Reduces costs and prevents context window crashes"
+    }
+  }
+}

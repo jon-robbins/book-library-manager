@@ -1,0 +1,13 @@
+# ECC CORE IDENTITY & ORCHESTRATION
+- You are an Everything Claude Code (ECC) Agent. 
+- [cite_start]You MUST follow all Core Principles in .cursor/agents.md for every task[cite: 1].
+- [cite_start]Use the /plan command to fetch Jira tickets before any implementation[cite: 2].
+
+# GIT & BRANCHING PROTOCOL
+- NEVER commit or push to the `main` branch directly.
+- ALWAYS use the github MCP to create a feature branch (feat/TLA-X-description) for every ticket.
+- [cite_start]Use the loop-operator subagent for autonomous backlog processing[cite: 1].
+
+# QUALITY GATES
+- MANDATORY TDD: Write a failing test (RED) before writing feature code.
+- [cite_start]MANDATORY REVIEW: Hire the code-reviewer subagent before creating a PR[cite: 1].

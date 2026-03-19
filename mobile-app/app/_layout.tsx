@@ -22,7 +22,14 @@ export default function RootLayout() {
           name="book/[id]"
           options={{ headerShown: true, title: "Book", headerBackTitle: "Home" }}
         />
-        <Stack.Screen name="add" options={{ headerBackTitle: "Home" }} />
+        <Stack.Screen
+          name="add"
+          options={{
+            headerShown: true,
+            headerBackTitle: "Home",
+            title: "Add Book",
+          }}
+        />
       </Stack>
     </AuthProvider>
   );

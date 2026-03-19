@@ -2,6 +2,7 @@
   "expo": {
     "name": "Library",
     "slug": "library",
+    "owner": "jon-robbins",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -34,6 +35,12 @@
         "expo-secure-store",
         {
           "faceIDPermission": "Allow $(PRODUCT_NAME) to access your Face ID biometric data."
+        }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.1011626665033-od50iim6ci155r611dj8jsh0dcldcvqp"
         }
       ]
     ],

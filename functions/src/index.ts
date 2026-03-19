@@ -189,3 +189,317 @@ export const uploadCoverPhoto = onCall(async (request) => {
     throw new HttpsError("internal", message);
   }
 });
+
+/** Goodreads CSV row (minimal shape we parse). */
+interface GoodreadsRow {
+  "Book Id": string;
+  "Title": string;
+  "Author": string;
+  "ISBN (\")\": string;
+  "ISBN13 (\")\": string;
+  "My Rating": string;
+  "Average Rating": string;
+  "Publisher": string;
+  "Bookshelves": string;
+  "Date Read": string;
+  [key: string]: string;
+}
+
+/** Result of parsing a single Goodreads book entry. */
+interface ParsedGoodreadsBook {
+  isbn: string | null;
+  title: string;
+  author: string;
+  isbn13: string | null;
+  myRating: number | null;
+  averageRating: number | null;
+  publisher: string;
+  bookshelves: string[];
+  dateRead: string | null;
+}
+
+/** Import result for a single book. */
+interface ImportResult {
+  title: string;
+  author: string;
+  isbn: string | null;
+  status: "success" | "skipped" | "error";
+  reason?: string;
+}
+
+/** Full import response. */
+interface GoodreadsImportResponse {
+  totalProcessed: number;
+  successCount: number;
+  skippedCount: number;
+  errorCount: number;
+  results: ImportResult[];
+  errors: string[];
+}
+
+/**
+ * Simple CSV parser for Goodreads exports.
+ * Handles quoted fields and escaped quotes.
+ */
+function parseGoodreadsCSV(csv: string): GoodreadsRow[] {
+  const lines = csv.split("\n");
+  if (lines.length < 2) {
+    return [];
+  }
+
+  // Parse header
+  const headerLine = lines[0];
+  const headers = parseCSVLine(headerLine);
+
+  const rows: GoodreadsRow[] = [];
+  let i = 1;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (!line.trim()) {
+      i++;
+      continue;
+    }
+
+    // Handle multiline quoted fields (rare but possible)
+    let fullLine = line;
+    let quoteCount = (line.match(/"/g) || []).length;
+    i++;
+    while (quoteCount % 2 !== 0 && i < lines.length) {
+      fullLine += "\n" + lines[i];
+      quoteCount += (lines[i].match(/"/g) || []).length;
+      i++;
+    }
+
+    const values = parseCSVLine(fullLine);
+    const row: GoodreadsRow = {};
+    headers.forEach((header, index) => {
+      row[header] = values[index] || "";
+    });
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+/**
+ * Parse a single CSV line, handling quoted fields.
+ */
+function parseCSVLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        // Escaped quote
+        current += '"';
+        i++;
+      } else {
+        // Toggle quote state
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      // Field separator
+      fields.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+
+  fields.push(current.trim());
+  return fields;
+}
+
+/**
+ * Parse a Goodreads row into our internal format.
+ */
+function parseGoodreadsRow(row: GoodreadsRow): ParsedGoodreadsBook {
+  const isbn = normalizeIsbn(row["ISBN (\""]) || normalizeIsbn(row["ISBN13 (\")"]) || null;
+  const myRating = parseInt(row["My Rating"], 10);
+  const avgRating = parseFloat(row["Average Rating"]);
+
+  // Parse bookshelves (comma-separated, may include quotes)
+  const bookshelves = row["Bookshelves"]
+    ? row["Bookshelves"]
+        .split(",")
+        .map((s) => s.trim().replace(/^["']|["']$/g, ""))
+        .filter((s) => s.length > 0)
+    : [];
+
+  return {
+    isbn,
+    title: row["Title"] || "Unknown Title",
+    author: row["Author"] || "Unknown Author",
+    isbn13: normalizeIsbn(row["ISBN13 (\")"]),
+    myRating: !isNaN(myRating) && myRating > 0 ? myRating : null,
+    averageRating: !isNaN(avgRating) && avgRating > 0 ? avgRating : null,
+    publisher: row["Publisher"] || "",
+    bookshelves,
+    dateRead: row["Date Read"] ? row["Date Read"] : null,
+  };
+}
+
+/**
+ * Callable: importGoodreadsBooks
+ * Imports books from a Goodreads CSV export. Handles validation, deduplication, and batch insertion.
+ * Requires user authentication.
+ */
+export const importGoodreadsBooks = onCall(
+  async (request): Promise<GoodreadsImportResponse> => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError("unauthenticated", "Must be signed in to import books.");
+    }
+
+    const csvData = request.data?.csv;
+    if (typeof csvData !== "string" || !csvData.trim()) {
+      throw new HttpsError("invalid-argument", "Missing or invalid CSV data.");
+    }
+
+    const response: GoodreadsImportResponse = {
+      totalProcessed: 0,
+      successCount: 0,
+      skippedCount: 0,
+      errorCount: 0,
+      results: [],
+      errors: [],
+    };
+
+    try {
+      // Parse CSV
+      const rows = parseGoodreadsCSV(csvData);
+      if (rows.length === 0) {
+        throw new HttpsError("invalid-argument", "CSV file is empty or has no valid book entries.");
+      }
+
+      response.totalProcessed = rows.length;
+
+      // Get existing books for this user to detect duplicates
+      const db = admin.firestore();
+      const existingBooksSnapshot = await db.collection("Book").where("userId", "==", uid).get();
+      const existingISBNs = new Set(
+        existingBooksSnapshot.docs.map((doc) => (doc.data() as { isbn: string }).isbn).filter(Boolean)
+      );
+
+      // Process each book
+      const booksToInsert: Array<{
+        userId: string;
+        title: string;
+        author: string;
+        isbn: string;
+        haveRead: boolean;
+        own: boolean;
+        wantToRead: boolean;
+      }> = [];
+
+      for (const row of rows) {
+        try {
+          const parsed = parseGoodreadsRow(row);
+
+          // Validate required fields
+          if (!parsed.title || !parsed.author) {
+            response.results.push({
+              title: parsed.title || "Unknown",
+              author: parsed.author || "Unknown",
+              isbn: parsed.isbn,
+              status: "error",
+              reason: "Missing title or author",
+            });
+            response.errorCount++;
+            continue;
+          }
+
+          // Skip if no ISBN
+          if (!parsed.isbn) {
+            response.results.push({
+              title: parsed.title,
+              author: parsed.author,
+              isbn: null,
+              status: "skipped",
+              reason: "No valid ISBN found",
+            });
+            response.skippedCount++;
+            continue;
+          }
+
+          // Skip if duplicate
+          if (existingISBNs.has(parsed.isbn)) {
+            response.results.push({
+              title: parsed.title,
+              author: parsed.author,
+              isbn: parsed.isbn,
+              status: "skipped",
+              reason: "Already in your library",
+            });
+            response.skippedCount++;
+            continue;
+          }
+
+          // Determine read status from bookshelves or date read
+          const haveRead = parsed.dateRead ? parsed.dateRead.length > 0 : parsed.bookshelves.includes("read");
+          const wantToRead = parsed.bookshelves.includes("to-read");
+          const own = parsed.bookshelves.includes("owned") || parsed.bookshelves.includes("owned-books");
+
+          booksToInsert.push({
+            userId: uid,
+            title: parsed.title,
+            author: parsed.author,
+            isbn: parsed.isbn,
+            haveRead,
+            own,
+            wantToRead,
+          });
+
+          response.results.push({
+            title: parsed.title,
+            author: parsed.author,
+            isbn: parsed.isbn,
+            status: "success",
+          });
+          response.successCount++;
+        } catch (err) {
+          const reason = err instanceof Error ? err.message : "Unknown error";
+          response.results.push({
+            title: row["Title"] || "Unknown",
+            author: row["Author"] || "Unknown",
+            isbn: normalizeIsbn(row["ISBN (\""]) || normalizeIsbn(row["ISBN13 (\")"]),
+            status: "error",
+            reason,
+          });
+          response.errorCount++;
+        }
+      }
+
+      // Batch insert books to Firestore
+      if (booksToInsert.length > 0) {
+        const batch = db.batch();
+        const booksRef = db.collection("Book");
+
+        for (const book of booksToInsert) {
+          const docRef = booksRef.doc();
+          batch.set(docRef, {
+            ...book,
+            id: docRef.id,
+            wantToReadPosition: 2147483647,
+          });
+        }
+
+        await batch.commit();
+      }
+
+      return response;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Import failed";
+      if (err instanceof HttpsError) {
+        throw err;
+      }
+      response.errors.push(message);
+      throw new HttpsError("internal", `Import failed: ${message}`);
+    }
+  }
+);

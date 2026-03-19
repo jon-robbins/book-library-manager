@@ -1,9 +1,12 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Redirect, useRouter, useFocusEffect } from "expo-router";
 import { View, Text, StyleSheet, ActivityIndicator, FlatList, TouchableOpacity, RefreshControl } from "react-native";
 import { useAuth } from "@/components/AuthProvider";
 import { fetchMyBooks, type Book } from "@/lib/books";
 import BookCoverImage from "@/components/BookCoverImage";
+import ErrorState from "@/components/ErrorState";
+import EmptyState from "@/components/EmptyState";
+import ErrorBanner from "@/components/ErrorBanner";
 
 export default function HomeScreen() {
   const { user, loading: authLoading } = useAuth();
@@ -12,15 +15,16 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const loadBooksRef = useRef<(() => Promise<void>) | null>(null);
 
   const loadBooks = useCallback(async () => {
     if (!user) return;
-    setError(null);
     try {
       const list = await fetchMyBooks();
       setBooks(list);
+      setError(null);
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Could not load books.";
+      const message = e instanceof Error ? e.message : "Failed to load books";
       setError(message);
     } finally {
       setLoading(false);
@@ -28,25 +32,42 @@ export default function HomeScreen() {
     }
   }, [user]);
 
+  loadBooksRef.current = loadBooks;
+
   useEffect(() => {
-    if (user) loadBooks();
+    if (user) {
+      loadBooks();
+    }
   }, [user, loadBooks]);
 
   useFocusEffect(
     useCallback(() => {
-      if (user) loadBooks();
-    }, [user, loadBooks])
+      if (user && loadBooksRef.current) {
+        loadBooksRef.current();
+      }
+    }, [user])
   );
 
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadBooks();
-  };
+  }, [loadBooks]);
+
+  const handleRetry = useCallback(() => {
+    setLoading(true);
+    loadBooks();
+  }, [loadBooks]);
+
+  const handleRetryError = useCallback(() => {
+    setError(null);
+    setRefreshing(true);
+    loadBooks();
+  }, [loadBooks]);
 
   if (authLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color="#007AFF" testID="auth-loading" />
       </View>
     );
   }
@@ -58,40 +79,54 @@ export default function HomeScreen() {
   if (loading && books.length === 0) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color="#007AFF" testID="initial-loading" />
       </View>
     );
   }
 
   if (error && books.length === 0) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => { setLoading(true); loadBooks(); }}>
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
+      <View style={styles.container}>
+        <ErrorState
+          title="Unable to load library"
+          message={error}
+          onRetry={handleRetry}
+          testID="error-state"
+        />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      {error && books.length > 0 && (
+        <ErrorBanner
+          message={error}
+          onRetry={handleRetryError}
+          onDismiss={() => setError(null)}
+          testID="error-banner"
+        />
+      )}
       <FlatList
         data={books}
         keyExtractor={(item) => item.id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListEmptyComponent={
-          <Text style={styles.empty}>No books yet. Scan a barcode to add one.</Text>
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#007AFF"
+            title="Pull to refresh"
+            titleColor="#666"
+            testID="refresh-control"
+          />
         }
-        ListHeaderComponent={
-          error ? (
-            <View style={styles.errorBanner}>
-              <Text style={styles.errorBannerText}>{error}</Text>
-              <TouchableOpacity onPress={() => { setError(null); onRefresh(); }}>
-                <Text style={styles.retryLink}>Retry</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null
+        ListEmptyComponent={
+          <EmptyState
+            title="No books yet"
+            subtitle="Scan a barcode or manually add a book to get started"
+            icon="📚"
+            testID="empty-state"
+          />
         }
         renderItem={({ item }) => (
           <TouchableOpacity
@@ -100,6 +135,7 @@ export default function HomeScreen() {
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel={`Book: ${item.title} by ${item.author}`}
+            testID={`book-row-${item.id}`}
           >
             <BookCoverImage
               book={item}
@@ -118,48 +154,38 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity>
         )}
+        contentContainerStyle={books.length === 0 ? styles.emptyListContent : undefined}
+        testID="books-list"
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-  empty: { padding: 20, textAlign: "center", color: "#666" },
-  errorText: { color: "#666", textAlign: "center", paddingHorizontal: 24, marginBottom: 16 },
-  retryButton: { paddingVertical: 12, paddingHorizontal: 24, backgroundColor: "#007AFF", borderRadius: 8 },
-  retryButtonText: { color: "#fff", fontSize: 17, fontWeight: "600" },
-  errorBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 12,
-    marginBottom: 8,
-    backgroundColor: "#fff3cd",
-    borderRadius: 8,
-  },
-  errorBannerText: { flex: 1, color: "#856404", fontSize: 14, marginRight: 12 },
-  retryLink: { color: "#007AFF", fontSize: 14, fontWeight: "600" },
+  container: { flex: 1, backgroundColor: "#fff" },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 24 },
+  emptyListContent: { flexGrow: 1 },
   row: {
     flexDirection: "row",
     alignItems: "center",
     padding: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: "#f0f0f0",
   },
   cover: {
-    width: 44,
-    height: 66,
-    borderRadius: 4,
+    width: 48,
+    height: 72,
+    borderRadius: 6,
     backgroundColor: "#e0e0e0",
   },
   coverPlaceholder: {
     justifyContent: "center",
     alignItems: "center",
   },
-  coverPlaceholderText: { fontSize: 22 },
+  coverPlaceholderText: { fontSize: 24 },
   rowText: { flex: 1, marginLeft: 14 },
-  bookTitle: { fontSize: 17, fontWeight: "600" },
-  bookAuthor: { fontSize: 14, color: "#666", marginTop: 4 },
+  bookTitle: { fontSize: 16, fontWeight: "600", color: "#333", lineHeight: 20 },
+  bookAuthor: { fontSize: 13, color: "#999", marginTop: 4 },
 });

@@ -1,0 +1,57 @@
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  text-align: center;
+  background: white;
+  border-radius: 8px;
+  margin: 24px 0;
+  border: 1px solid #f5f5f5;
+}
+
+.error-state-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.error-state-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #d32f2f;
+  margin: 0 0 8px 0;
+}
+
+.error-state-message {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 20px 0;
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+.error-state-button {
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  background: #d32f2f;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.error-state-button:hover {
+  background: #b71c1c;
+}
+
+.error-state-button:active {
+  background: #9a1515;
+}
+
+.error-state-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.1);
+}

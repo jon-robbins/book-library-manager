@@ -1,10 +1,11 @@
 import Constants from "expo-constants";
-import { Redirect } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useAuth } from "@/components/AuthProvider";
 
 export default function SettingsScreen() {
   const { user, loading, signOut } = useAuth();
+  const router = useRouter();
   // Version from app.json (expo.version), exposed at runtime via Expo config (TLA-22).
   const version = Constants.expoConfig?.version ?? "—";
 
@@ -14,12 +15,29 @@ export default function SettingsScreen() {
   return (
     <View style={styles.container}>
       <View>
-        <Text style={styles.title}>Settings</Text>
-        <TouchableOpacity style={styles.button} onPress={() => signOut()}>
+        <Text style={styles.title} accessibilityRole="header">Settings</Text>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => router.push("/import-goodreads")}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Import from Goodreads"
+          accessibilityHint="Import your Goodreads library"
+        >
+          <Text style={styles.buttonText}>Import from Goodreads</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => signOut()}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Sign out"
+          accessibilityHint="Signs you out of the application"
+        >
           <Text style={styles.buttonText}>Sign out</Text>
         </TouchableOpacity>
       </View>
-      <Text style={styles.version}>Version {version}</Text>
+      <Text style={styles.version} accessible={true} accessibilityLabel={`Application version ${version}`}>Version {version}</Text>
     </View>
   );
 }

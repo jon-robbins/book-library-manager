@@ -1,0 +1,11 @@
+{
+  "pattern": "sequential",
+  "mode": "safe",
+  "runbook": "sequential-tla-runbook.md",
+  "startedAt": null,
+  "lastCheckpoint": null,
+  "currentTicket": null,
+  "completedTickets": [],
+  "consecutiveFailures": 0,
+  "status": "ready"
+}

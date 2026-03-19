@@ -12,6 +12,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="want-to-read"
+        options={{
+          title: "Want to Read",
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: "Settings",

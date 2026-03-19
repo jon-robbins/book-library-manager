@@ -6,6 +6,8 @@ type Book @table {
   isbn: String!
   haveRead: Boolean!
   own: Boolean!
+  wantToRead: Boolean! @default(expr: "false")
+  wantToReadPosition: Int! @default(expr: "2147483647")
   coverImgUrl: String
   description: String
   publishDate: String

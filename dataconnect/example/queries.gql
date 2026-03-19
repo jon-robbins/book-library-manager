@@ -7,6 +7,8 @@ query ListMyBooks @auth(level: USER) {
     isbn
     haveRead
     own
+    wantToRead
+    wantToReadPosition
     coverImgUrl
     description
     publishDate
@@ -37,6 +39,8 @@ query GetBookById($id: UUID!) @auth(level: USER) {
     isbn
     haveRead
     own
+    wantToRead
+    wantToReadPosition
     coverImgUrl
     description
     publishDate
@@ -55,6 +59,8 @@ mutation CreateBook(
   $isbn: String!
   $haveRead: Boolean!
   $own: Boolean!
+  $wantToRead: Boolean
+  $wantToReadPosition: Int
   $coverImgUrl: String
   $description: String
   $publishDate: String
@@ -72,6 +78,8 @@ mutation CreateBook(
     isbn: $isbn
     haveRead: $haveRead
     own: $own
+    wantToRead: $wantToRead
+    wantToReadPosition: $wantToReadPosition
     coverImgUrl: $coverImgUrl
     description: $description
     publishDate: $publishDate
@@ -91,6 +99,8 @@ mutation UpdateBook(
   $isbn: String
   $haveRead: Boolean
   $own: Boolean
+  $wantToRead: Boolean
+  $wantToReadPosition: Int
   $coverImgUrl: String
   $description: String
   $publishDate: String
@@ -107,6 +117,8 @@ mutation UpdateBook(
     isbn: $isbn
     haveRead: $haveRead
     own: $own
+    wantToRead: $wantToRead
+    wantToReadPosition: $wantToReadPosition
     coverImgUrl: $coverImgUrl
     description: $description
     publishDate: $publishDate
